@@ -7,8 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 import 'package:http/http.dart' as http;
-import 'model/dish.dart';
 import 'model/food.dart';
+import 'model/meal.dart';
 import 'globals.dart' as globals;
 
 
@@ -17,7 +17,13 @@ class Home extends StatefulWidget {
 
   final FlutterBlue flutterBlue = FlutterBlue.instance;
   final List<BluetoothDevice> devicesList = new List<BluetoothDevice>();
-  final Dish currentDish = new Dish();
+  final List<Meal> meals = [
+    new Meal("Breakfast"),
+    new Meal("Lunch"),
+    new Meal("Dinner"),
+    new Meal("Snacks")
+  ];
+  Meal currentMeal;
 
   List<int> readValues = [0,0,0,0,0,0,0,0];
 
@@ -40,14 +46,133 @@ class _HomeState extends State<Home> {
   };
 
   int _getWeight(){
-    return widget.readValues[3] * 256 + widget.readValues[4];
+    return widget.currentMeal == null ?  0 : widget.readValues[3] * 256 + widget.readValues[4];
+  }
+  double _getEnergy(){
+    double sum = 0;
+    if(widget.currentMeal == null){
+      widget.meals.forEach((meal) {
+        sum += meal.dish.getEnergy();
+      });
+    }
+    else{
+      sum = widget.currentMeal.dish.getEnergy();
+    }
+    return sum;
+  }
+  double _getCarbs(){
+    double sum = 0;
+    if(widget.currentMeal == null){
+      widget.meals.forEach((meal) {
+        sum += meal.dish.getCarbs();
+      });
+    }
+    else{
+      sum = widget.currentMeal.dish.getCarbs();
+    }
+    return sum;
+  }
+  double _getFat(){
+    double sum = 0;
+    if(widget.currentMeal == null){
+      widget.meals.forEach((meal) {
+        sum += meal.dish.getFat();
+      });
+    }
+    else{
+      sum = widget.currentMeal.dish.getFat();
+    }
+    return sum;
+  }
+  double _getProtein(){
+    double sum = 0;
+    if(widget.currentMeal == null){
+      widget.meals.forEach((meal) {
+        sum += meal.dish.getProtein();
+      });
+    }
+    else{
+      sum = widget.currentMeal.dish.getProtein();
+    }
+    return sum;
+  }
+
+  Widget _getTopLeft(){
+    if(widget.currentMeal == null){
+      return Text("");
+    }
+    else{
+      return Column(
+        children: [
+          Text("kcal", style: _descriptionStyle(),),
+          Text(_getEnergy().round().toString(), style: _nutritionStyle(globals.yellow)),
+        ],
+      );
+    }
+  }
+
+  Widget _getMiddle(){
+    if(widget.currentMeal == null){
+      return Text(
+        _getEnergy().round().toString(),
+        style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 40,
+            color: Colors.white
+        ),
+      );
+    }
+    else {
+      return Text(
+        _getWeight().toString()+"g",
+        style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 40,
+            color: Colors.white
+        ),
+      );
+    }
+  }
+
+  ListView _getFoodsList(){
+    return  ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: widget.currentMeal.dish.foods.length,
+      itemBuilder: (BuildContext context, int index){
+        Food food = widget.currentMeal.dish.foods[index];
+        return Dismissible(
+          background: Container(margin: const EdgeInsets.all(8), color: Colors.red,),
+          key: Key(index.toString()),
+          onDismissed: (direction) {
+            setState(() {
+              widget.currentMeal.dish.foods.remove(food);
+            });
+          },
+          child: Container(
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.white
+            ),
+            margin: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Container(child: Text(food.name, ), constraints: BoxConstraints(maxWidth: 200),),
+                Text(food.getEnergy().round().toString(), style: _nutritionStyle(globals.yellow),)
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   _showCustomDialog(){
     showDialog(context: context,
         builder: (BuildContext context){
           return AlertDialog(
-            title: Text("Put in Nutrition-Values per 100g", style: TextStyle(color: globals.dark_blue),),
+            title: Text("Put in Nutrition-Values per 100g", style: TextStyle(color: globals.secondary),),
             content: Container(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -115,13 +240,13 @@ class _HomeState extends State<Home> {
                   onPressed: () {
                     Navigator.of(context).pop();
                   } ,
-                  child: Text("Cancel", style: TextStyle(color: globals.dark_blue),)
+                  child: Text("Cancel", style: TextStyle(color: globals.secondary),)
               ),
               TextButton(
                   onPressed: () async {
                     Food food = new Food("", _customControllers["name"].text, int.parse(_customControllers["energy"].text), double.parse(_customControllers["carbs"].text), double.parse(_customControllers["fat"].text), double.parse(_customControllers["protein"].text), _getWeight());
                     setState(() {
-                      widget.currentDish.foods.add(food);
+                      widget.currentMeal.dish.foods.add(food);
                     });
                     Navigator.of(context).pop();
                   } ,
@@ -133,7 +258,56 @@ class _HomeState extends State<Home> {
     );
   }
 
-  _showCodeDialog([String start = ""]){
+  Row _getMealsRow(int index, int number_of_elements){
+    List<Expanded> containers = <Expanded>[];
+    for(int i = index; i - index < number_of_elements && i < widget.meals.length; i++){
+      containers.add(
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: InkWell(
+              onTap: () {
+                widget.currentMeal = widget.meals[i];
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: globals.secondary
+                ),
+                height: 130,
+                child: Stack(
+                    children: [
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(widget.meals[i].name),
+                        ),
+                      ),
+                      Center(child: Container(
+                          padding: EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle
+                          ),
+                          child: Icon(Icons.add, color: globals.primary,))
+                      )
+                    ]
+                ),
+              ),
+            ),
+          ),
+        )
+      );
+    }
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: containers
+    );
+  }
+
+
+  void _showCodeDialog([String start = ""]){
     showDialog(context: context,
         builder: (BuildContext context){
           return AlertDialog(
@@ -154,7 +328,7 @@ class _HomeState extends State<Home> {
                   onPressed: () async {
                     var response = await _fetchCode(_codeController.text);
                     setState(() {
-                      widget.currentDish.foods.add(response);
+                      widget.currentMeal.dish.foods.add(response);
                     });
                     Navigator.of(context).pop();
                   } ,
@@ -175,7 +349,7 @@ class _HomeState extends State<Home> {
     }
   }
 
-  TextStyle _nutritionStyle([Color c = Colors.black]){
+  TextStyle _nutritionStyle([Color c = Colors.white]){
     return TextStyle(
       fontSize: 21,
       fontWeight: FontWeight.bold,
@@ -186,6 +360,50 @@ class _HomeState extends State<Home> {
     return TextStyle(
       fontSize: 12,
       fontWeight: FontWeight.w200,
+      color: Colors.white
+    );
+  }
+
+  Padding _getOverview(Widget top_left, double carbs, double protein, double fat, Widget middle){
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 20, 0, 20),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              top_left,
+              Text(""),
+              Text(""),
+            ],
+          ),
+          middle,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Column(
+                children: [
+                  Text("Carbs", style: _descriptionStyle(),),
+                  Text(carbs.round().toString(), style: _nutritionStyle(),),
+                ],
+              ),
+              Column(
+                children: [
+                  Text("Protein", style: _descriptionStyle(),),
+                  Text(protein.round().toString(), style: _nutritionStyle(),),
+                ],
+              ),
+              Column(
+                children: [
+                  Text("Fat", style: _descriptionStyle(),),
+                  Text(fat.round().toString(), style: _nutritionStyle(),),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
   
@@ -204,66 +422,13 @@ class _HomeState extends State<Home> {
           width: 350,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            color: Colors.white
           ),
-          child: _connectedDevice != null ? Padding(
-            padding: const EdgeInsets.fromLTRB(0, 20, 0, 20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Column(
-                      children: [
-                        Text("kcal", style: _descriptionStyle(),),
-                        Text(widget.currentDish.getEnergy().round().toString(), style: _nutritionStyle(globals.yellow)),
-                      ],
-                    ),
-                    Text(""),
-                    Text(""),
-                  ],
-                ),
-
-                Text(
-                    _getWeight().toString()+"g",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 40,
-                      color: globals.dark_blue
-                    ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Column(
-                      children: [
-                        Text("Carbs", style: _descriptionStyle(),),
-                        Text(widget.currentDish.getCarbs().round().toString(), style: _nutritionStyle(),),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        Text("Protein", style: _descriptionStyle(),),
-                        Text(widget.currentDish.getProtein().round().toString(), style: _nutritionStyle(),),
-                      ],
-                    ),
-                    Column(
-                      children: [
-                        Text("Fat", style: _descriptionStyle(),),
-                        Text(widget.currentDish.getFat().round().toString(), style: _nutritionStyle(),),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ) : (Center(child:  widget.devicesList.length == 0 ? CircularProgressIndicator(backgroundColor: globals.dark_blue,) : TextButton(
+          child: _connectedDevice != null ? _getOverview(_getTopLeft(), _getCarbs(), _getProtein(), _getFat(), _getMiddle()) : (Center(child:  widget.devicesList.length == 0 ? CircularProgressIndicator(backgroundColor: globals.secondary,) : TextButton(
             style: ButtonStyle(
               shape: MaterialStateProperty.all<CircleBorder>(
                   CircleBorder()
               ),
-              backgroundColor: MaterialStateProperty.all(globals.dark_blue),
+              backgroundColor: MaterialStateProperty.all(globals.secondary),
               foregroundColor: MaterialStateProperty.all(Colors.white)
             ),
             onPressed: () async {
@@ -304,37 +469,43 @@ class _HomeState extends State<Home> {
             child: Icon(Icons.bluetooth),
           ))),
         ),
-        Expanded(child: ListView.builder(
-          padding: const EdgeInsets.all(8),
-          itemCount: widget.currentDish.foods.length,
-          itemBuilder: (BuildContext context, int index){
-            Food food = widget.currentDish.foods[index];
-            return Dismissible(
-              background: Container(margin: const EdgeInsets.all(8), color: Colors.red,),
-              key: Key(index.toString()),
-              onDismissed: (direction) {
-                setState(() {
-                  widget.currentDish.foods.remove(food);
-                });
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                  color: Colors.white
-                ),
-                margin: const EdgeInsets.all(8),
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Container(child: Text(food.name, ), constraints: BoxConstraints(maxWidth: 200),),
-                    Text(food.getEnergy().round().toString(), style: _nutritionStyle(globals.yellow),)
-                  ],
+        SizedBox(
+          height: 20,
+        ),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+                color: Colors.white,
+                boxShadow: [BoxShadow(
+                  color: Color.fromRGBO(24, 73, 32, .5),
+                  spreadRadius: 10,
+                  blurRadius: 8,
+                  offset: Offset(0,2)
+                )]
+            ),
+            child: widget.currentMeal == null ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _getMealsRow(0, 2),
+                _getMealsRow(2, 2),
+              ],
+            ) : Stack(children: [
+              _getFoodsList(),
+              Align(
+                alignment: Alignment.topLeft,
+                child: IconButton(
+                  onPressed: (){
+                    setState(() {
+                      widget.currentMeal = null;
+                    });
+                  },
+                  icon: Icon(Icons.chevron_left),
                 ),
               ),
-            );
-          },
-        ))
+            ]),
+          ),
+        )
       ],
     );
   }
@@ -369,16 +540,11 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Color.fromRGBO(246, 251, 255, 1),
-    appBar: AppBar(
-      systemOverlayStyle: SystemUiOverlayStyle(statusBarColor: Colors.transparent),
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-    ),
+    backgroundColor: globals.primary,
     floatingActionButton: _connectedDevice != null  ? SpeedDial(
       visible: true,
       animatedIcon: AnimatedIcons.menu_close,
-      backgroundColor: globals.dark_blue,
+      backgroundColor: globals.primary,
       children: [
         SpeedDialChild(
           child: Icon(Icons.qr_code),
@@ -399,18 +565,16 @@ class _HomeState extends State<Home> {
             child: Icon(Icons.bluetooth_disabled),
             onTap: () {
               setState(() {
+                widget.flutterBlue.stopScan();
+                widget.devicesList.remove(_connectedDevice);
                 _connectedDevice.disconnect();
                 _connectedDevice = null;
+                widget.flutterBlue.startScan(withServices: [Guid(globals.service)]);
               });
             }
         ),
       ],
     ) : null,
-    body: Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
-      child: _buildView(),
-    ),
+    body: _buildView(),
   );
-
-
 }
