@@ -258,13 +258,13 @@ class _HomeState extends State<Home> {
     );
   }
 
-  Row _getMealsRow(int index, int number_of_elements){
+  Column _getMealsRow(){
     List<Expanded> containers = <Expanded>[];
-    for(int i = index; i - index < number_of_elements && i < widget.meals.length; i++){
+    for(int i = 0; i < widget.meals.length; i++){
       containers.add(
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(12),
             child: InkWell(
               onTap: () {
                 widget.currentMeal = widget.meals[i];
@@ -272,7 +272,7 @@ class _HomeState extends State<Home> {
               child: Container(
                 decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    color: globals.secondary
+                    color: Colors.white
                 ),
                 height: 130,
                 child: Stack(
@@ -280,17 +280,29 @@ class _HomeState extends State<Home> {
                       Align(
                         alignment: Alignment.topLeft,
                         child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(widget.meals[i].name),
+                          padding: const EdgeInsets.all(12),
+                          child: Text(widget.meals[i].name, style: TextStyle(fontWeight: FontWeight.w400, fontSize: 18),),
                         ),
                       ),
-                      Center(child: Container(
-                          padding: EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle
-                          ),
-                          child: Icon(Icons.add, color: globals.primary,))
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(widget.meals[i].dish.getEnergy().round().toString() + " kcal"),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Container(
+                              padding: EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: globals.primary,
+                                shape: BoxShape.circle
+                              ),
+                              child: Icon(Icons.add, color: Colors.white,)),
+                        ),
                       )
                     ]
                 ),
@@ -300,7 +312,7 @@ class _HomeState extends State<Home> {
         )
       );
     }
-    return Row(
+    return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: containers
     );
@@ -476,21 +488,9 @@ class _HomeState extends State<Home> {
           child: Container(
             decoration: BoxDecoration(
                 borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
-                color: Colors.white,
-                boxShadow: [BoxShadow(
-                  color: Color.fromRGBO(24, 73, 32, .5),
-                  spreadRadius: 10,
-                  blurRadius: 8,
-                  offset: Offset(0,2)
-                )]
+                color: Color.fromRGBO(245, 245, 245, 1.0),
             ),
-            child: widget.currentMeal == null ? Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _getMealsRow(0, 2),
-                _getMealsRow(2, 2),
-              ],
-            ) : Stack(children: [
+            child: widget.currentMeal == null ? _getMealsRow() : Stack(children: [
               _getFoodsList(),
               Align(
                 alignment: Alignment.topLeft,
