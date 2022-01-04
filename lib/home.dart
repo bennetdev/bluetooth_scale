@@ -7,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 import 'package:http/http.dart' as http;
+import 'package:scale/model/database.dart';
+import 'package:scale/model/dish.dart';
 import 'model/food.dart';
 import 'model/meal.dart';
 import 'globals.dart' as globals;
@@ -16,6 +18,7 @@ class Home extends StatefulWidget {
   Home({Key key}) : super(key: key);
 
   final FlutterBlue flutterBlue = FlutterBlue.instance;
+  final DatabaseHelper database = new DatabaseHelper();
   final List<BluetoothDevice> devicesList = new List<BluetoothDevice>();
   final List<Meal> meals = [
     new Meal("Breakfast"),
@@ -244,10 +247,11 @@ class _HomeState extends State<Home> {
               ),
               TextButton(
                   onPressed: () async {
-                    Food food = new Food("", _customControllers["name"].text, int.parse(_customControllers["energy"].text), double.parse(_customControllers["carbs"].text), double.parse(_customControllers["fat"].text), double.parse(_customControllers["protein"].text), _getWeight());
+                    Food food = new Food(0,"", _customControllers["name"].text, int.parse(_customControllers["energy"].text), double.parse(_customControllers["carbs"].text), double.parse(_customControllers["fat"].text), double.parse(_customControllers["protein"].text), _getWeight());
                     setState(() {
                       widget.currentMeal.dish.foods.add(food);
                     });
+                    widget.database.insertFood(food, widget.currentMeal.dish.id);
                     Navigator.of(context).pop();
                   } ,
                   child: Text("Add (" + _getWeight().toString() + "g)", style: TextStyle(color: globals.yellow),)
@@ -342,6 +346,7 @@ class _HomeState extends State<Home> {
                     setState(() {
                       widget.currentMeal.dish.foods.add(response);
                     });
+                    widget.database.insertFood(response, widget.currentMeal.dish.id);
                     Navigator.of(context).pop();
                   } ,
                   child: Text("Add (" + _getWeight().toString() + "g)")
@@ -514,9 +519,29 @@ class _HomeState extends State<Home> {
     return _buildConnectDeviceView();
   }
 
+  initMeals() async{
+    var map = await widget.database.getDishesByDate(DateTime.now());
+    for(int i = 0; i < widget.meals.length; i++){
+      if(map.containsKey(i)){
+        Dish dish = map[i];
+        dish.foods = await widget.database.getFoodByDish(dish.id);
+        widget.meals[i].dish = dish;
+      }
+      else{
+        Dish dish = new Dish(-1);
+        int id = await widget.database.insertDish(dish);
+        dish.id = id;
+
+        widget.meals[i].dish = dish;
+      }
+    }
+
+  }
+
   @override
   void initState() {
     super.initState();
+    initMeals();
     widget.flutterBlue.connectedDevices
         .asStream()
         .listen((List<BluetoothDevice> devices) {

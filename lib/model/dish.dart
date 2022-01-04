@@ -1,10 +1,22 @@
 import 'food.dart';
 
 class Dish{
+  // database primary key
+  int id;
+  DateTime dateTime;
+
   List<Food> foods;
 
-  Dish(){
+  Dish(int id){
+    this.id = id;
     foods = new List<Food>();
+    dateTime = DateTime.now();
+  }
+
+  Map<String, dynamic> toMap(){
+    return {
+      'date': dateTime.toString().substring(0,10)
+    };
   }
 
   double getEnergy(){

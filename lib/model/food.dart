@@ -1,5 +1,8 @@
 class Food{
-  String id;
+  //primary key for database
+  int id;
+
+  String isbn;
   String name;
   int energy;
   double carbs;
@@ -9,6 +12,7 @@ class Food{
 
   Food(
     this.id,
+    this.isbn,
     this.name,
     this.energy,
     this.carbs,
@@ -19,7 +23,19 @@ class Food{
 
   factory Food.fromJson(dynamic json, int amount){
     var product = json["product"];
-    return Food(product["_id"], product["product_name"], product["nutriments"]["energy-kcal_100g"], product["nutriments"]["carbohydrates_100g"] + .0, product["nutriments"]["fat_100g"]+.0, product["nutriments"]["proteins_100g"]+.0, amount);
+    return Food(0,product["_id"], product["product_name"], product["nutriments"]["energy-kcal_100g"], product["nutriments"]["carbohydrates_100g"] + .0, product["nutriments"]["fat_100g"]+.0, product["nutriments"]["proteins_100g"]+.0, amount);
+  }
+
+  Map<String, dynamic> toMap(){
+    return {
+      'isbn': isbn,
+      'name': name,
+      'energy': energy,
+      'carbs': carbs,
+      'fat': fat,
+      'protein': protein,
+      'amount': amount
+    };
   }
 
   double getCarbs(){
